@@ -113,7 +113,36 @@ npm start      # node src/server.js
 > ⚠️ Eski bazadagi `user.skins` yozuvlari **qo'lda ko'chirilmagan** (yangi tizimga o'tishda eski inventar yo'qoladi).
 
 ### 5.2 `Skin` — `skins`
-`skinName` · `skinRarity` (Common/Rare/Epic/Legendary/Mythic) · `skinPrice` · `imageUrl`
+| Maydon | Turi | Izoh |
+|--------|------|------|
+| `skinName` | String | required |
+| `skinRarity` | String | enum `Common/Rare/Epic/Legendary/Mythic` (required) |
+| `skinPrice` | Number | required, > 0 |
+| `imageUrl` | String | required — **ikki usul bor**: `/uploads/...` (fayl upload) YOKI `https://...` (tayyor havola) |
+| `weaponType` | String | 🆕 ixtiyoriy — AWP, AK-47, Karambit... (max 50) |
+| `wear` | String | 🆕 ixtiyoriy — Factory New, Minimal Wear... (max 50) |
+| `float` | Number | 🆕 ixtiyoriy — 0 dan 1 gacha |
+| `description` | String | 🆕 ixtiyoriy (max 500) |
+
+**Rasm qo'shishning 2 usuli** (`POST /api/skins` — admin, ixtiyoriy biri):
+1. **Fayl upload:** `multipart/form-data` + maydon nomi **`image`** (faqat `image/*`, max 5 MB) → `imageUrl` = `/uploads/<fayl>`
+2. **Tayyor havola:** oddiy **JSON** + `imageUrl: "https://..."` (faqat `http/https`, Joi tekshiradi)
+
+```json
+POST /api/skins   (Authorization: Bearer <adminToken>, Content-Type: application/json)
+{
+  "skinName": "Dragon Lore",
+  "skinRarity": "Mythic",
+  "skinPrice": 4500,
+  "imageUrl": "https://example.com/dragon-lore.jpg",
+  "weaponType": "AWP",
+  "wear": "Factory New",
+  "float": 0.015,
+  "description": "Noyob snayper miltig'i"
+}
+```
+> Ikkalasi ham bo'lmasa → `400 "Rasm kerak: fayl ('image') YOKI 'imageUrl' havolasi!"`  
+> Yangilashda (`PATCH`) eski rasm **lokal fayl** bo'lsa u diskdan o'chiriladi; masofaviy URL bo'lsa tegilmaydi.
 
 ### 5.3 `Case` — `cases` ✅ **endi faol**
 | Maydon | Turi | Izoh |
@@ -163,8 +192,8 @@ npm start      # node src/server.js
 |-------|-----|--------|--------|
 | GET | `/api/skins` | 🔓 | Barcha skinlar |
 | GET | `/api/skins/:id` | 🔓 | Bitta skin |
-| POST | `/api/skins` | 🛡 📷 ✅ | Yangi skin yaratish |
-| PATCH | `/api/skins/:id` | 🛡 📷 ✅ | Yangilash (eski rasm o'chadi) |
+| POST | `/api/skins` | 🛡 ✅ | Yangi skin: **fayl (`image`) YOKI `imageUrl` (https://...)** + yangi maydonlar |
+| PATCH | `/api/skins/:id` | 🛡 ✅ | Yangilash: yangi fayl/havola → eskisi lokal fayl bo'lsa diskdan o'chadi |
 | DELETE | `/api/skins/:id` | 🛡 | O'chirish (+ rasm diskdan) |
 
 ### 6.3 Users — `/api/users`

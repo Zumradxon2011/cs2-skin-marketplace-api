@@ -2,6 +2,21 @@ const Skin = require('../models/skins.model');
 const fs = require('fs');
 const path = require('path');
 
+// Lokal (/uploads/) rasmni o'chirishga yordamchi.
+// Masofaviy URL (https://...) bo'lsa — unga tegilmaydi!
+const removeLocalImage = (imageUrl) => {
+    if (!imageUrl || !imageUrl.startsWith('/uploads/')) {
+        return;
+    }
+
+    const imagePath = path.join(__dirname, '../../', imageUrl);
+    if (fs.existsSync(imagePath)) {
+        fs.unlink(imagePath, (err) => {
+            if (err) console.error("Rasmni o'chirishda xatolik:", err);
+        });
+    }
+};
+
 // Barcha skinlarni olish
 exports.getAllSkins = async (req, res) => {
     try {
@@ -28,21 +43,24 @@ exports.getSkinById = async (req, res) => {
     }
 };
 
-// Yangi skin yaratish
+// Yangi skin yaratish (2 usul: fayl upload YOKI imageUrl havolasi)
 exports.createSkin = async (req, res) => {
     try {
-        if (!req.file) {
-            return res.status(400).json({ message: "Rasm yuklanishi shart!" });
-        }
+        const skinData = { ...req.body };
 
-        const skinData = {
-            ...req.body,
-            imageUrl: `/uploads/${req.file.filename}`
-        };
+        if (req.file) {
+            // 1-usul: fayl yuklandi (multipart/form-data, maydon nomi 'image')
+            skinData.imageUrl = `/uploads/${req.file.filename}`;
+        } else if (req.body.imageUrl) {
+            // 2-usul: tayyor havola — validate allaqachon http/https tekshirdi
+            skinData.imageUrl = req.body.imageUrl;
+        } else {
+            return res.status(400).json({ message: "Rasm kerak: fayl ('image') YOKI 'imageUrl' havolasi!" });
+        }
 
         const newSkin = new Skin(skinData);
         const savedSkin = await newSkin.save();
-        
+
         res.status(201).json({
             message: "Skin muvaffaqiyatli yaratildi",
             skin: savedSkin
@@ -75,17 +93,14 @@ exports.updateSkin = async (req, res) => {
 
         let updateData = { ...req.body };
 
-        // Agar yangi rasm yuklangan bo'lsa, eskisini o'chiramiz va yangisini yozamiz
+        // Yangi fayl yuklangan bo'lsa — eskisini (lokal fayl bo'lsa) o'chiramiz
         if (req.file) {
-            if (skin.imageUrl) {
-                const oldImagePath = path.join(__dirname, '../../', skin.imageUrl);
-                if (fs.existsSync(oldImagePath)) {
-                    fs.unlink(oldImagePath, (err) => {
-                        if (err) console.error("Eski rasmni o'chirishda xatolik:", err);
-                    });
-                }
-            }
+            removeLocalImage(skin.imageUrl);
             updateData.imageUrl = `/uploads/${req.file.filename}`;
+        } else if (req.body.imageUrl) {
+            // Yangi havola berilgan bo'lsa — eskisi lokal fayl bo'lsa uni tozalaymiz
+            removeLocalImage(skin.imageUrl);
+            updateData.imageUrl = req.body.imageUrl;
         }
 
         const updatedSkin = await Skin.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
@@ -114,15 +129,8 @@ exports.deleteSkin = async (req, res) => {
             return res.status(404).json({ message: "Skin topilmadi" });
         }
 
-        // Bazadan o'chgandan keyin uning rasmini ham serverdan o'chiramiz
-        if (deletedSkin.imageUrl) {
-            const imagePath = path.join(__dirname, '../../', deletedSkin.imageUrl);
-            if (fs.existsSync(imagePath)) {
-                fs.unlink(imagePath, (err) => {
-                    if (err) console.error("Rasmni o'chirishda xatolik:", err);
-                });
-            }
-        }
+        // Bazadan o'chgandan keyin uning lokal rasmini ham serverdan o'chiramiz
+        removeLocalImage(deletedSkin.imageUrl);
 
         res.status(200).json({ message: "Skin muvaffaqiyatli o'chirildi" });
     } catch (error) {
