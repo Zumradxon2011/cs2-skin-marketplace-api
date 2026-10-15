@@ -12,6 +12,8 @@ const seedAdmin = require('./utils/seedAdmin');
 const skinsRouter = require('./routes/skins.routes');
 const usersRouter = require('./routes/user.routes');
 const authRouter = require('./routes/auth.routes');
+const casesRouter = require('./routes/case.routes');
+const transactionsRouter = require('./routes/transaction.routes');
 
 const app = express();
 
@@ -26,6 +28,8 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/skins', skinsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/cases', casesRouter);
+app.use('/api/transactions', transactionsRouter);
 
 // Boshlang'ich tekshiruv route'i
 app.get('/', (req, res) => {

@@ -1,5 +1,7 @@
 const User = require('../models/user.model');
 const Skin = require('../models/skins.model');
+const Inventory = require('../models/inventory.model');
+const Transaction = require('../models/transaction.model');
 
 exports.getAllUsers = async (req, res) => {
     try {
@@ -46,17 +48,23 @@ exports.deleteUser = async (req, res) => {
     }
 };
 
-// Inventarni ko'rish funksiyasi
+// Inventarni ko'rish funksiyasi (faqat egasidagi, hali sotilmaganlar)
 exports.getMyInventory = async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).populate('skins');
+        const user = await User.findById(req.user.id);
         if (!user) {
             return res.status(404).json({ message: "Foydalanuvchi topilmadi!" });
         }
+
+        const inventory = await Inventory.find({ user: req.user.id, status: 'owned' })
+            .populate('skin')
+            .sort({ obtainedAt: -1 });
+
         res.status(200).json({
             success: true,
             wallet: user.wallet, // Hamyon balansini ham ko'rsatib ketish qulayroq bo'ladi
-            skins: user.skins
+            count: inventory.length,
+            inventory
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -84,15 +92,33 @@ exports.buySkin = async (req, res) => {
             return res.status(400).json({ message: "Balansingizda yetarli mablag' yo'q!" });
         }
 
+        const balanceBefore = user.wallet;
         user.wallet -= skin.skinPrice;
-        user.skins.push(skin._id);
+        const balanceAfter = user.wallet;
 
         await user.save();
+
+        // Inventarga yozamiz (marketplace'dan sotib olindi — kesadan tushmagan)
+        const item = await Inventory.create({
+            user: user._id,
+            skin: skin._id,
+            sourceCase: null,
+            status: 'owned'
+        });
+
+        // Pul tarixini yozamiz
+        await Transaction.create({
+            user: user._id,
+            type: 'skin_buy',
+            amount: -skin.skinPrice,
+            balanceBefore,
+            balanceAfter
+        });
 
         res.status(200).json({
             message: "Skin muvaffaqiyatli sotib olindi!",
             wallet: user.wallet,
-            skins: user.skins
+            item
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -110,8 +136,9 @@ exports.sellSkin = async (req, res) => {
             return res.status(404).json({ message: "Foydalanuvchi topilmadi!" });
         }
 
-        const skinIndex = user.skins.indexOf(skinId);
-        if (skinIndex === -1) {
+        // Egasidagi bitta nusxani topamiz (owned holatdagi)
+        const item = await Inventory.findOne({ user: userId, skin: skinId, status: 'owned' });
+        if (!item) {
             return res.status(400).json({ message: "Sizda bu skin mavjud emas!" });
         }
 
@@ -120,16 +147,28 @@ exports.sellSkin = async (req, res) => {
             return res.status(404).json({ message: "Skin topilmadi!" });
         }
 
-        user.skins.splice(skinIndex, 1);
-        // skin.price o'rniga skin.skinPrice ishlatiladi
+        const balanceBefore = user.wallet;
         user.wallet += skin.skinPrice;
+        const balanceAfter = user.wallet;
 
+        // Inventardan o'chirmaymiz — 'sold' holatga o'tkazib, tarixni saqlaymiz
+        item.status = 'sold';
+        await item.save();
         await user.save();
+
+        // Pul tarixini yozamiz
+        await Transaction.create({
+            user: user._id,
+            type: 'skin_sale',
+            amount: skin.skinPrice,
+            balanceBefore,
+            balanceAfter
+        });
 
         res.status(200).json({
             message: "Skin muvaffaqiyatli sotildi!",
             wallet: user.wallet,
-            skins: user.skins
+            soldItem: item
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -149,8 +188,19 @@ exports.depositMoney = async (req, res) => {
             return res.status(404).json({ message: "Foydalanuvchi topilmadi!" });
         }
 
+        const balanceBefore = user.wallet;
         user.wallet += Number(amount);
+        const balanceAfter = user.wallet;
         await user.save();
+
+        // Pul tarixini yozamiz
+        await Transaction.create({
+            user: user._id,
+            type: 'deposit',
+            amount: Number(amount),
+            balanceBefore,
+            balanceAfter
+        });
 
         res.status(200).json({
             message: "Balans muvaffaqiyatli to'ldirildi!",

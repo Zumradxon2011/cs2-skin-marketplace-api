@@ -33,15 +33,10 @@ const userSchema = new mongoose.Schema({
     refreshToken: {
         type: String,
         default: null
-    },
+    }
 
-    // Dinamik skinlar (inventory) uchun massiv:
-    skins: [
-        {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Skin'
-        }
-    ]
+    // Eslatma: skinlar endi alohida 'Inventory' kolleksiyasida saqlanadi
+    // (kimniki, qaysi kesadan tushgan, sotildimi — tarixi bilan)
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);
