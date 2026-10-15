@@ -1,0 +1,28 @@
+# Render Blueprint — shu fayl orqali xizmatni avtomatik sozlash mumkin
+# (Render Dashboard -> New -> Blueprint -> repo'ni tanlang)
+#
+# Muhim: quyidagi maxfiy qiymatlar dashboarddan kiritiladi (sync: false),
+# ya'ni .env'dagi qiymatlarni ko'z ko'rib joylash mumkin.
+services:
+  - type: web
+    name: cs2-marketplace-api
+    runtime: node
+    plan: free
+    region: oregon # bepul darajada mavjud mintaqa
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: / # GET / 200 qaytarishi kerak
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false # dashboarddan kiritiladi
+      - key: JWT_SECRET
+        sync: false
+      - key: REFRESH_SECRET
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+    # PORT ni qo'lda qo'shmang — Render o'z portini avtomatik beradi

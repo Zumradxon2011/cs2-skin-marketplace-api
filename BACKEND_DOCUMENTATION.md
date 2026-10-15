@@ -341,7 +341,53 @@ curl http://localhost:5432/api/cases   # []
 
 ---
 
-## 15. Keyingi qadamlar (tavsiya)
+## 15. 🚀 Render.com'ga deploy
+
+### 15.1 Koddagi tayyorlik
+| Narsa | Holat |
+|---|---|
+| Port | ✅ `process.env.PORT \|\| 5432` — Render o'z portini beradi |
+| Start | ✅ `npm start` → `node src/server.js` (Render avtomatik aniqlaydi) |
+| Build | ✅ Qadam yo'q — faqat `npm install` |
+| Node versiyasi | ✅ `package.json → engines: { "node": "22.x" }` |
+| Health check | ✅ `GET /` → 200 (`render.yaml` da `healthCheckPath: /`) |
+| Host | ✅ `app.listen(PORT)` → `0.0.0.0` |
+| DNS | ✅ Render'da **avtomatik o'chiriladi** (`RENDER=true` bo'lsa `dns.setServers` ishlatilmaydi — tashqi DNS 53-port bloklanishining oldini oladi). Lokalda esa DNS tuzatishi **o'zgarmadi** |
+| `nodemon` | ✅ `devDependencies` ga ko'chirildi (deploy tezlashadi) |
+| `.env` | ✅ Git'da yo'q — Render dashboarddan kiritiladi |
+
+### 15.2 Qadamlar
+1. **Repoyi GitHub'ga push qiling** (Render shu yerdan o'qiydi).
+2. Render Dashboard → **New → Blueprint** → repo'ni tanlang → `render.yaml` avtomatik sozlaydi.  
+   *Yoki* **New → Web Service** → qo'lda: Runtime `node`, Build `npm install`, Start `npm start`.
+3. **Environment Variables** (Blueprint `sync: false` — qiymatni dashboardga kiriting):
+
+| Kalit | Qiymat |
+|---|---|
+| `MONGODB_URI` | Atlas URI |
+| `JWT_SECRET` | maxfiy kalit |
+| `REFRESH_SECRET` | maxfiy kalit |
+| `ADMIN_EMAIL` | `admin@gmail.com` |
+| `ADMIN_PASSWORD` | admin paroli |
+| `NODE_ENV` | `production` (Blueprint o'zi qo'yadi) |
+
+> ⛔ **`PORT` ni qo'lda qo'shmang** — Render o'z portini avto beradi, qo'lda boshsangiz yo'nalish buziladi.
+
+4. **MongoDB Atlas → Network Access → IP Access List** ga ruxsat qo'shing (demo uchun `0.0.0.0/0`).  
+   ⚠️ Bu **eng ko'p uchraydigan xato** — qo'shmasangiz logda `Error connecting to MongoDB` va server yopiladi.
+5. **Deploy** → loglar bo'limida `Server ishga tushdi` + `Admin allaqachon mavjud/yaratildi` ko'rinishi kerak.
+6. Tekshiruv: `https://<xizmat>.onrender.com/` → "CS2 Marketplace API ishlayapti!"
+
+### 15.3 Cheklovlar va ogohlantirishlar
+| Masala | Tushuntirish |
+|---|---|
+| 💾 **`uploads/` vaqtinchalik** | Render **Free** da disk har qayta deployda tozalanadi → yuklangan rasmlar **o'chadi**. Yechimlar: a) demo uchun e'tiborsiz qoldirish, b) Render Persistent Disk (pullik, `UPLOAD_DIR` env bilan kodni moslash), c) Cloudinary/S3 (to'g'ri yechim) |
+| 🥶 **Instance uxlaydi** | Free daraja ~15 daqiqa faoliyatsizlikdan keyin uxlaydi → keyingi so'rov **30–60 soniya** kechikadi (cold start). Doimiy ishlasa pullik instance. |
+| 🔄 **Auto deploy** | `master` ga push qilsangiz avtomatik qayta deploy bo'ladi — shu vaqtda `seedAdmin` qayta ishlaydi (bazada admin bo'lsa "Admin allaqachon mavjud" deb yozadi ✅) |
+
+---
+
+## 16. Keyingi qadamlar (tavsiya)
 
 1. **IDOR tuzatish:** `PATCH /api/users/:id` ga `req.user.id === req.params.id || admin` tekshiruvi.
 2. **Rate limiting + helmet** qo'shish.

@@ -1,6 +1,13 @@
 require('dotenv').config();
 const dns = require('dns');
-dns.setServers(['8.8.8.8', '1.1.1.1']);
+
+// DNS tuzatish (lokal muhitda Atlas SRV yechimi uchun).
+// Render kabi platformalarda tashqi DNS (53-port) bloklangan bo'lishi mumkin,
+// shuning uchun u yerda tizimning o'z DNS'i ishlatiladi (RENDER=true avto o'rnatiladi).
+// Kerak bo'lsa SKIP_DNS_FIX=1 bilan istalgan joyda o'chirish mumkin.
+if (!process.env.RENDER && process.env.SKIP_DNS_FIX !== '1') {
+    dns.setServers(['8.8.8.8', '1.1.1.1']);
+}
 
 const express = require('express');
 const cors = require('cors');
