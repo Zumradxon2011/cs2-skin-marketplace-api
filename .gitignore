@@ -26,3 +26,10 @@ coverage/
 # Temporary files
 .tmp/
 temp/
+
+# Temporary files
+.tmp/
+temp/
+
+# Documentation / Markdown files
+BACKEND_DOCUMENTATION.md
