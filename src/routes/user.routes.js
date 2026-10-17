@@ -13,10 +13,11 @@ const {
 const { updateUserSchema } = require("../validations/user.validation");
 const validate = require("../middlewares/validate");
 const { authMiddleware, adminMiddleware } = require("../middlewares/auth");
-
+const { getMe } = require("../controllers/auth.controller");
 
 const router = Router();
 
+router.get("/me", authMiddleware, getMe);
 router.get("/", authMiddleware, adminMiddleware, getAllUsers);        
 router.get("/inventory", authMiddleware, getMyInventory);      
 router.post("/buy/:skinId", authMiddleware, buySkin);      // <--- Yangi qo'shildi
